@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <functional>
 
 // a = 4, b = 29
 // x: x + 2, y: y * 2 - 1
@@ -10,6 +11,13 @@
 enum OPERATIONS {
     X, Y
 };
+
+
+struct Operation {
+    Operation *X;
+    Operation *Y;
+};
+
 
 std::string trajectory_to_string(int start, const std::vector<OPERATIONS> &trajectory) {
     auto result = std::string(trajectory.size(), '(');
@@ -30,44 +38,66 @@ std::vector<int> trajectory_to_vector(int start, const std::vector<OPERATIONS> &
     return trajectory_vector;
 }
 
-void _direct_calculation(int start, int finish, std::vector<std::vector<OPERATIONS> > &trajectories,
-                         const std::vector<OPERATIONS> &trajectory = std::vector<OPERATIONS>()) {
-    if (start == finish)
-        trajectories.push_back(trajectory);
-    else if (start > finish)
-        return;
+Operation *_direct_calculation(int start, int finish) {
+    if (start > finish)
+        return nullptr;
     else {
-        auto new_trajectory_X = std::vector<OPERATIONS>(trajectory);
-        new_trajectory_X.push_back(X);
-        auto new_trajectory_Y = std::vector<OPERATIONS>(trajectory);
-        new_trajectory_Y.push_back(Y);
+        auto node = new Operation();
+        if (start == finish)
+            return node;
+        else {
+            node->X = _direct_calculation(start + 2, finish);
+            node->Y = _direct_calculation(start * 2 - 1, finish);
+        }
 
-        _direct_calculation([](int x) { return x + 2; }(start), finish, trajectories, new_trajectory_X);
-        _direct_calculation([](int x) { return 2 * x - 1; }(start), finish, trajectories, new_trajectory_Y);
+        if (!node->X && !node->Y) {
+            delete node;
+            return nullptr;
+        }
+
+        return node;
     }
 }
 
-std::vector<std::vector<OPERATIONS> > direct_calculation(int start, int finish, const int* route_point = nullptr) {
-    auto trajectories = std::vector<std::vector<OPERATIONS> >();
-    _direct_calculation(start, finish, trajectories);
-
-    if (route_point) {
-        for (auto trajectory = trajectories.begin(); trajectory != trajectories.end();) {
-            std::vector<int> trajectory_vector = trajectory_to_vector(start, *trajectory);
-            if (std::find(trajectory_vector.begin(), trajectory_vector.end(), *route_point) == trajectory_vector.end())
-                trajectories.erase(trajectory);
-            else
-                trajectory++;
-        }
+void operations_tree_to_trajectories(int start, Operation *root, std::vector<std::vector<OPERATIONS> > &trajectories,
+                                     std::vector<OPERATIONS> trajectory = std::vector<OPERATIONS>()) {
+    if (!root) {
+        return;
     }
-    
+    if (!root->X && !root->Y)
+        trajectories.push_back(trajectory);
+    else {
+        trajectory.push_back(X);
+        operations_tree_to_trajectories(start + 2, root->X, trajectories, trajectory);
+        trajectory.pop_back();
+        trajectory.push_back(Y);
+        operations_tree_to_trajectories(start * 2 - 1, root->Y, trajectories, trajectory);
+    }
+}
+
+std::vector<std::vector<OPERATIONS> > direct_calculation(int start, int finish) {
+    auto root = _direct_calculation(start, finish);
+    auto trajectories = std::vector<std::vector<OPERATIONS> >();
+    operations_tree_to_trajectories(start, root, trajectories);
+    return trajectories;
+}
+
+std::vector<std::vector<OPERATIONS> > direct_calculation_with_route_point(int start, int finish, int route_point) {
+    auto trajectories = direct_calculation(start, finish);
+    for (auto trajectory = trajectories.begin(); trajectory != trajectories.end();) {
+        auto trajectory_vector = trajectory_to_vector(start, *trajectory);
+        if (std::find(trajectory_vector.begin(), trajectory_vector.end(), route_point) == trajectory_vector.end())
+            trajectories.erase(trajectory);
+        else
+            trajectory++;
+    }
     return trajectories;
 }
 
 
 int main() {
     int start = 4, finish = 29, route_point1 = 9, route_point2 = 19;
-    
+
     auto trajectories = direct_calculation(start, finish);
     std::cout << "Direct calculation: " << trajectories.size() << std::endl;
     for (const std::vector<OPERATIONS> &trajectory: trajectories) {
@@ -75,7 +105,7 @@ int main() {
     }
     std::cout << "------------------------------------------------------------------" << std::endl;
 
-    auto trajectories_route_point1 = direct_calculation(start, finish, &route_point1);
+    auto trajectories_route_point1 = direct_calculation_with_route_point(start, finish, route_point1);
     std::cout << "Route point: " << route_point1 << std::endl;
     std::cout << "Direct calculation: " << trajectories_route_point1.size() << std::endl;
     for (const std::vector<OPERATIONS> &trajectory: trajectories_route_point1) {
@@ -83,13 +113,13 @@ int main() {
     }
     std::cout << "------------------------------------------------------------------" << std::endl;
 
-    auto trajectories_route_point2 = direct_calculation(start, finish, &route_point2);
+    auto trajectories_route_point2 = direct_calculation_with_route_point(start, finish, route_point2);
     std::cout << "Route point: " << route_point2 << std::endl;
     std::cout << "Direct calculation: " << trajectories_route_point2.size() << std::endl;
     for (const std::vector<OPERATIONS> &trajectory: trajectories_route_point2) {
         std::cout << trajectory_to_string(start, trajectory) << std::endl;
     }
     std::cout << "------------------------------------------------------------------" << std::endl;
-    
+
     return 0;
 }
