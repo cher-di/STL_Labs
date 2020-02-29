@@ -3,10 +3,13 @@
 #include <string>
 #include <algorithm>
 #include <functional>
+#include <map>
 
 // a = 4, b = 29
 // x: x + 2, y: y * 2 - 1
 // проходит через 9 или 19
+
+unsigned int calculation_counter = 0;
 
 enum OPERATIONS {
     X, Y
@@ -17,7 +20,6 @@ struct Operation {
     Operation *X;
     Operation *Y;
 };
-
 
 std::string trajectory_to_string(int start, const std::vector<OPERATIONS> &trajectory) {
     auto result = std::string(trajectory.size(), '(');
@@ -40,6 +42,8 @@ std::vector<int> trajectory_to_vector(int start, const std::vector<OPERATIONS> &
 
 std::vector<std::vector<OPERATIONS> > direct_calculation(int start, int finish) {
     std::function<Operation *(int, int)> _direct_calculation = [&](int start, int finish) -> Operation * {
+        calculation_counter++;
+
         if (start > finish)
             return nullptr;
         else {
@@ -96,6 +100,8 @@ std::vector<std::vector<OPERATIONS> > calculation_with_route_point(int start, in
 
 std::vector<std::vector<OPERATIONS> > reverse_calculation(int start, int finish) {
     std::function<Operation *(int, int)> _reverse_calculation = [&](int start, int finish) -> Operation * {
+        calculation_counter++;
+
         if (start > finish)
             return nullptr;
         else {
@@ -138,55 +144,101 @@ std::vector<std::vector<OPERATIONS> > reverse_calculation(int start, int finish)
     return trajectories;
 }
 
+std::map<int, int> operation_discovering(int start, int finish) {
+    // Расчет методом исследования операций
+
+    std::map<int, int> space;
+    std::function<int (int, int)> calc_operations = [&space, &calc_operations](int x, int fin)
+    {
+        calculation_counter++;
+
+        if(space.count(x)) return space[x];
+        if(x==fin)
+        {
+            space[x]=1;
+            return 1;
+        }
+        if(x<fin)
+        {
+            space[x]= calc_operations(x + 2, fin) + calc_operations(x * 2 - 1, fin);
+            return space[x];
+        }
+        return 0;
+    };
+
+    calc_operations(start, finish);
+
+    return space;
+}
 
 int main() {
     int start = 4, finish = 29, route_point1 = 9, route_point2 = 19;
 
+    calculation_counter = 0;
     auto trajectories = direct_calculation(start, finish);
     std::cout << "Direct calculation: " << trajectories.size() << std::endl;
     for (const std::vector<OPERATIONS> &trajectory: trajectories) {
         std::cout << trajectory_to_string(start, trajectory) << std::endl;
     }
+    std::cout << "Num of steps: " << calculation_counter << std::endl;
     std::cout << "------------------------------------------------------------------" << std::endl;
 
+    calculation_counter = 0;
     trajectories = reverse_calculation(start, finish);
     std::cout << "Reverse calculation: " << trajectories.size() << std::endl;
     for (const std::vector<OPERATIONS> &trajectory: trajectories) {
         std::cout << trajectory_to_string(start, trajectory) << std::endl;
     }
+    std::cout << "Num of steps: " << calculation_counter << std::endl;
     std::cout << "------------------------------------------------------------------" << std::endl;
 
+    calculation_counter = 0;
     auto trajectories_route_point1 = calculation_with_route_point(start, finish, route_point1, direct_calculation);
     std::cout << "Route point: " << route_point1 << std::endl;
     std::cout << "Direct calculation: " << trajectories_route_point1.size() << std::endl;
     for (const std::vector<OPERATIONS> &trajectory: trajectories_route_point1) {
         std::cout << trajectory_to_string(start, trajectory) << std::endl;
     }
+    std::cout << "Num of steps: " << calculation_counter << std::endl;
     std::cout << "------------------------------------------------------------------" << std::endl;
 
+    calculation_counter = 0;
     trajectories_route_point1 = calculation_with_route_point(start, finish, route_point1, reverse_calculation);
     std::cout << "Route point: " << route_point1 << std::endl;
     std::cout << "Reverse calculation: " << trajectories_route_point1.size() << std::endl;
     for (const std::vector<OPERATIONS> &trajectory: trajectories_route_point1) {
         std::cout << trajectory_to_string(start, trajectory) << std::endl;
     }
+    std::cout << "Num of steps: " << calculation_counter << std::endl;
     std::cout << "------------------------------------------------------------------" << std::endl;
 
+    calculation_counter = 0;
     auto trajectories_route_point2 = calculation_with_route_point(start, finish, route_point2, direct_calculation);
     std::cout << "Route point: " << route_point2 << std::endl;
     std::cout << "Direct calculation: " << trajectories_route_point2.size() << std::endl;
     for (const std::vector<OPERATIONS> &trajectory: trajectories_route_point2) {
         std::cout << trajectory_to_string(start, trajectory) << std::endl;
     }
+    std::cout << "Num of steps: " << calculation_counter << std::endl;
     std::cout << "------------------------------------------------------------------" << std::endl;
 
+    calculation_counter = 0;
     trajectories_route_point2 = calculation_with_route_point(start, finish, route_point2, reverse_calculation);
     std::cout << "Route point: " << route_point2 << std::endl;
     std::cout << "Reverse calculation: " << trajectories_route_point2.size() << std::endl;
     for (const std::vector<OPERATIONS> &trajectory: trajectories_route_point2) {
         std::cout << trajectory_to_string(start, trajectory) << std::endl;
     }
+    std::cout << "Num of steps: " << calculation_counter << std::endl;
     std::cout << "------------------------------------------------------------------" << std::endl;
+
+    calculation_counter = 0;
+    auto space = operation_discovering(start, finish);
+    std::cout << "Operation discovering: " << space[start] << std::endl;
+    std::cout << "Num of steps: " << calculation_counter << std::endl;
+    for (auto iter: space) {
+        std::cout << iter.first << " " << iter.second << std::endl;
+    }
 
     return 0;
 }
